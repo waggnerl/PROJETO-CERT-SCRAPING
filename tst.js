@@ -8,8 +8,6 @@ const axios = require('./services/axios');
   await page.setDefaultNavigationTimeout(0); 
   //Pesquisa provedor por estado
   await page.goto('https://www.google.com/search?q=provedor+de+internet+por+estado&rlz=1C1GCEU_pt-BRBR999BR999&sxsrf=APq-WButRj8ttFbTQ4pxUhhRpAoZbAu2dw%3A1648727809220&ei=AZdFYviEDYO75OUP__6moAQ&ved=0ahUKEwi4iZnbpfD2AhWDHbkGHX-_CUQQ4dUDCA4&uact=5&oq=provedor+de+internet+por+estado&gs_lcp=Cgdnd3Mtd2l6EAM6BwgAEEcQsANKBAhBGABKBAhGGABQ9AlY9AlgoAxoAnAAeACAAaUBiAGlAZIBAzAuMZgBAKABAcgBCMABAQ&sclient=gws-wiz');
-  await page.screenshot({ path: 'example.png' });
-
   const rankPovedor = await page.evaluate(() => {
     return {
       urlRankProvedor : document.querySelector('.w13wLe').href
@@ -55,10 +53,8 @@ const axios = require('./services/axios');
   data.forEach(el=>{
     arr.push(el[3])
   })
-  //Fim Pesquisa provedor por estado
 
-
-   const asns = []
+   const asns = ['as266475']
    const empresas = []
    let htmlSite = ''
 //Acessar ASNS
@@ -69,17 +65,16 @@ const axios = require('./services/axios');
     arr[index] = arr[index].replace(' ','+')
     valor = arr[index] 
     await page.goto(`https://www.google.com/search?q=${valor}+bgp+asn&rlz=1C1GCEU_pt-BRBR999BR999&sxsrf=APq-WBtv-2EXEMXxTJSTi9XwIvaDunQC7A%3A1649247906531&ei=ooZNYqiGIPWE1sQPkLGGuA4&ved=0ahUKEwio3_Wct__2AhV1gpUCHZCYAecQ4dUDCA4&uact=5&oq=Brisanet+asn&gs_lcp=Cgdnd3Mtd2l6EAMyBAgAEB5KBAhBGABKBAhGGABQAFgAYLoGaABwAHgAgAGdAYgBnQGSAQMwLjGYAQCgAQKgAQHAAQE&sclient=gws-wiz`);
-    await page.screenshot({ path: 'example.png' });
-
     htmlSite = await page.evaluate(() => {
       return {
        siteProvedor : document.querySelector('.LC20lb.MBeuO.DKV0Md').innerText}
     });
-    asns.push(htmlSite.siteProvedor.split(' ', 1))
+    //asns.push(htmlSite.siteProvedor.split(' ', 1))
   }
   //Fim Acessar ASNS
 
   let asnData = []
+  let asnDataManip = []
   let asn = ''
   let titular = ''
   let cnpj = ''
@@ -88,18 +83,48 @@ const axios = require('./services/axios');
   let ips = ''
   let ipsManip = ''
 
-  //Acessar Ip por ASN
+  //Acessar dados ASNS
   for (let index = 0; index < asns.length; index++) {
 
   await page.goto(`https://registro.br/tecnologia/ferramentas/whois/?search=${asns[index]}`);
   await page.waitForSelector('.font-3 strong', {visible: true})
   await page.click('button');
   await page.screenshot({ path: 'example.png' });
-  
+  titular = await page.evaluate(() => {
+    el = document.querySelector('.cell-owner')
+    return el ? el.innerText : '' 
+ });
+ cnpj = await page.evaluate(() => {
+  el = document.querySelector('.cell-ownerid')
+  return el ? el.innerText : '' 
+});
+pais = await page.evaluate(() => {
+  el = document.querySelector('.cell-country')
+  return el ? el.innerText : '' 
+});
+email = await page.evaluate(() => {
+  el = document.querySelector('.cell-emails')
+  return el ? el.innerText : '' 
+});
 ips = await page.evaluate(() => {
   el = document.querySelector('.list ul')
   return el ? el.innerText.split('/') : '' 
 });
+
+  asn = asns[index][0]
+asnDataManip = {asn: asns[index][0],titular:titular, cnpj:cnpj,pais:pais,email:email }
+
+//try {
+//  await axios.post('/data', {
+//    asn: asn,
+//    titular:titular,
+//    cnpj:cnpj,
+//    pais:pais,
+//    email:email
+//  
+//})} catch (err) {
+//  console.log(err)
+//}
 
 ipsManip = ips
 for (let index = 1; index < ipsManip.length; index++) {
@@ -110,117 +135,18 @@ indice = ipsManip.indexOf('')
     ipsManip.splice(indice, 1);
     indice = ipsManip.indexOf('');
   }
+
 asnData.push(ipsManip)
 }
-//Acessar Ip por ASN
-
-//Limpar dados Ip
-
-let ip = ''
-let ipsArray = []
- 
-for (let index = 0; index < asnData.length; index++) {
-  asnData[index].map(el=>{
-    ipsArray.push(el)
-  })
-}
-
-//Limpar dados Ip
-
-//Consulta host por ip
-
-let dnsArray = []
-let dnsArrayFilter = []
-
-for (let index = 0; index < ipsArray.length; index++) {
-  await page.goto(`https://registro.br/tecnologia/ferramentas/whois/?search=${ipsArray[index]}`);
-  await page.screenshot({ path: 'example.png' });
-  await page.waitForSelector('.cell-autnum', {visible: true})
-
-  host = await page.evaluate(() => {
-    el = document.querySelector('.cell-nameservers span')
-    return el ? el.innerText : '' 
- });
- 
- if (host != ''){dnsArray.push(host)}
-  
-}
-//Fim consulta host por ip
-
-//Remover host duplicado
-
-dnsArrayFilter = dnsArray.filter(function(el, i) {
-  return dnsArray.indexOf(el) === i;
-});
-
-//Fim remover host duplicado
-
-//Consultar dados ips
 
 
-let ipMap = ''
-let ipsFilter = []
-for (let index = 0; index < dnsArrayFilter.length; index++) {
-  ipMap = dnsArrayFilter[index]
-  ipMap = ipMap.replaceAll('.',' ')
-  ipMap = ipMap.split(' ')
-  ipMap = [ipMap[ipMap.length-3]+'.'+ipMap[ipMap.length-2]+'.'+ipMap[ipMap.length-1]]
-  await page.goto(`https://www.ssllabs.com/ssltest/analyze.html?d=${ipMap}`);
-  await page.screenshot({ path: 'example.png' });
-  try{
-    page.waitForNavigation()
-    await page.waitForTimeout(80000)
-    await page.screenshot({ path: 'example.png' });
 
-    common_name = await page.evaluate(() => {
-      el = document.querySelector('table tbody :nth-child(2) .tableCell')
-      return el ? el.innerText : '' 
-   });
-   alternatives_names = await page.evaluate(() => {
-    el = document.querySelector('table tbody :nth-child(3) .tableCell')
-    return el ? el.innerText : '' 
- });
- serial_number = await page.evaluate(() => {
-  el = document.querySelector('table tbody :nth-child(4) :nth-child(2)')
-  return el ? el.innerText : '' 
-});
-ipDataSend = await page.evaluate(() => {
-  el = document.querySelector('.ip')
-  return el ? el.innerText : '' 
-});
-ipDataSend = ipDataSend.replace('(', '')
-ipDataSend = ipDataSend.replace(')', '')
-   if(common_name != ''){
-    await page.goto(`https://registro.br/tecnologia/ferramentas/whois/?search=${ipDataSend}`);
-    await page.waitForTimeout(5000)
-    asnDataIp = await page.evaluate(() => {
-      el = document.querySelector('.cell-autnum')
-      return el ? el.innerText : '' 
-    });
-    await page.screenshot({ path: 'example.png' });
-
-    console.log(common_name, alternatives_names, serial_number, ipDataSend, asnDataIp)
-  try {
-  await axios.post('/data', {
-    common_name: common_name,
-    alternatives_names:alternatives_names,
-    serial_number:serial_number, 
-    ip: ipDataSend,
-    asn:asnDataIp
-})} catch (err) {
-  console.log(err)
-}
-}
-  } catch(e){
-    if (e instanceof puppeteer.errors.TimeoutError) {
-      console.log(e)
-    }
-  }  
-}
-
-//Fim consultar dados ips
-  console.log(ipsFilter)
- 
-  await browser.close();
+//Fim acessar dados ASNS
+  console.log(asnData)
+ await browser.close();
 
 })(); 
+
+// [ '170.83.172.0', '2804:3868::' ],
+//[ '187.19.128.0', '177.37.128.0', '2804:29b8::' ],
+//[ '186.216.160.0', '186.216.176.0', '2804:8d4::', '191.6.96.0' ]      
