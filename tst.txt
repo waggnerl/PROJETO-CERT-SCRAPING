@@ -1,4 +1,0 @@
-    await axios
-    .get(`https://www.ipinfo.io/${htmlSite.ip}?token=a712f5e7529903`)
-    .then(response => ips.push(response.data))
-       console.log(ips[0].org.replace(/\D/g, ""))
