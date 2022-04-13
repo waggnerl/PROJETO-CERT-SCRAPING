@@ -55,6 +55,8 @@ const axios = require('./services/axios');
   data.forEach(el=>{
     arr.push(el[3])
   })
+  //Fim Pesquisa provedor por estado
+
 
    const asns = []
    const empresas = []
